@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>MCSR Tree</title>
+        <style>
+            * {
+                font-family: Arial, Helvetica, sans-serif;
+            }
+            body {
+                background: linear-gradient(135deg, rgb(10,10,10),rgb(16, 0, 45)) no-repeat;
+                width: 100vw;
+                height: 100vh;
+                margin: 0;
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
+            }
+            #search {
+                border: 2px solid rgb(49, 0, 133);
+                border-radius: 10px;
+                color: white;
+                padding: 10px 15px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+                font-size: 18px;
+            }
+            input {
+                background-color: rgba(0,0,0,0);
+                border: 1px solid white;
+                /* border-color: rgb(5, 5, 143); */
+                border-radius: 3px;
+                color:white;
+                font-size: 18px;
+                width: 130px
+            }
+            button {
+                background-color: rgba(0, 0, 0, 0);
+                color: white;
+                border: 1px solid white;
+                border-radius: 3px;
+                font-size: 16px
+            }
+
+            .switch {
+                position: relative;
+                display: inline-block;
+                width: 50px;
+                height: 28px;
+            }
+
+            .switch {
+                position: relative;
+                width: 42px;
+                height: 24px;
+                border: none;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.12);
+                cursor: pointer;
+                padding: 0;
+                transition: background 0.2s ease;
+                transform: translateY(5px);
+            }
+ 
+            .switch::before {
+                content: "";
+                position: absolute;
+                top: 3px;
+                left: 3px;
+                width: 18px;
+                height: 18px;
+                border-radius: 50%;
+                background: white;
+                transition: transform 0.2s ease;
+            }
+ 
+            .switch.on {
+                background: rgb(124, 58, 237);
+            }
+ 
+            .switch.on::before {
+                transform: translateX(18px);
+            }
+
+            #gobutton {
+                width: 100%;
+                font-size: 26px;
+            }
+            
+            #container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                margin-top: 20px;
+            }
+
+            #status {
+                color: rgb(65, 65, 65);
+                margin-top: 10px;
+                font-size: 10px;
+            }
+            .resultbox {
+                background-color: rgba(10, 75, 125, 0);
+                border: 2px solid rgb(49, 0, 133);
+                border-radius: 4px;
+                padding: 10px;
+                width: fit-content;
+                margin: auto;
+            }
+            #result {
+                color: white;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .graphline {
+                width: 40px;
+                height: 2px;
+                background-color: white;
+            }
+            #suggestions {
+                position: fixed;
+                bottom: 0px;
+                left: 10px;
+                color: rgb(160, 160, 160);
+                font-size: 14px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="container">
+            <div id="search">
+                <div>
+                    <label for="player1inp">Player 1: </label>
+                    <input id='player1inp' type="text" value="fatchudlolcow"/>
+                    <label for="player2inp">Player 2: </label>
+                    <input id='player2inp' type="text" value="feinberg"/>
+                </div>
+                <div style="padding-bottom: 5px">
+                    <span>Include forfeits</span>
+                    <button id="forfeitbutton" class="switch" onclick="toggleforfeits()" aria-pressed="false"></button>
+                </div>
+                <button id='gobutton' onclick="go()">Go</button>
+            </div>
+
+            <p id="status">asd</p>
+            <div id="result"> </div>
+        </div>
+        <p id="suggestions">suggestions dm @dinotnt</p>
+    </body>
+    <script type="module">
+        import { decode } from "https://cdn.jsdelivr.net/npm/@msgpack/msgpack/dist.es5+esm/index.mjs";
+
+        let forfeits = false
+        let players = null
+        let graph = null
+        let lastf = null
+        const status = document.getElementById('status');
+
+        let nameToId = new Map();
+
+        window.toggleforfeits = function() {
+            const button = document.getElementById('forfeitbutton')
+            forfeits = !forfeits
+            button.classList.toggle('on', forfeits)
+            button.setAttribute('aria-pressed', String(forfeits))
+        }
+
+        async function retreivedata(includeForfeits) {
+            try {
+                status.textContent = 'Fetching player list';
+                players = await fetch(includeForfeits ? "players-forfeits.json" : "players.json").then(r => r.json());
+
+                status.textContent = 'Fetching graph file';
+                let buffer = null
+                if (includeForfeits) {
+                    const files = [
+                        "graph-forfeits-0.msgpack",
+                        "graph-forfeits-1.msgpack",
+                        "graph-forfeits-2.msgpack",
+                        "graph-forfeits-3.msgpack"
+                    ];
+
+                    graph = {};
+                    let x = 0
+                    let y = status.textContent
+
+                    for (const file of files) {
+                        const data = await fetch(file).then(r => r.arrayBuffer());
+                        const chunk = decode(data);
+
+                        for (const [key, value] of Object.entries(chunk)) {
+                            graph[Number(key)] = value;
+                        }
+                        x += 25
+                        status.textContent = y + ' - ' + String(x)
+                    }
+                } else {
+                    buffer = await fetch("graph.msgpack").then(r => r.arrayBuffer());
+                    status.textContent = 'Decoding graph file';
+                    graph = decode(buffer);
+                }
+                status.textContent = 'Loading players'
+
+                players.forEach((player, id) => {
+                    if (player.nickname) {
+                        nameToId.set(
+                            player.nickname.toLowerCase(),
+                            id
+                        );
+                    }
+                });
+                
+                status.textContent = `Loaded ${players.length} players`
+                return true
+            } catch (error) {
+                console.error(error);
+                status.textContent = 'Error loading data';
+                return false
+            }
+        }
+
+    function findPath(start, target) {
+        if (start === target) {
+            return {
+                nodes: [start],
+                matches: []
+            };
+        }
+
+        let queue = [start];
+        let index = 0;
+
+        let visited = new Set([start]);
+
+        let parent = {};
+        let parentEdge = {};
+
+        while (index < queue.length) {
+            let current = queue[index++];
+
+            for (let edge of graph[current] || []) {
+
+                let [
+                    neighbour,
+                    winner,
+                    loser,
+                    matchId
+                ] = edge;
+
+                if (visited.has(neighbour))
+                    continue;
+
+                visited.add(neighbour);
+
+                parent[neighbour] = current;
+
+                parentEdge[neighbour] = {
+                    winner,
+                    loser,
+                    matchId
+                };
+
+                if (neighbour === target) {
+                    return buildPath(
+                        start,
+                        target,
+                        parent,
+                        parentEdge
+                    );
+                }
+                queue.push(neighbour);
+            }
+        }
+
+        return null;
+    }
+
+    function buildPath(start, end, parent, edges) {
+        let nodes = [];
+        let matches = [];
+
+        let current = end;
+
+        while (current !== start) {
+            nodes.push(current);
+            matches.push(edges[current]);
+
+            current = parent[current];
+        }
+
+        nodes.push(start);
+
+        nodes.reverse();
+        matches.reverse();
+
+        return {
+            nodes,
+            matches
+        };
+    }
+
+    async function getmatchdata(id) {
+        const raw = await fetch('https://api.mcsrranked.com/matches/' + id)
+        const rj = await raw.json()
+        return rj['data']
+    }
+
+    function elotorank(elo) {
+        if (elo >= 2000) {
+            return 'Netherite'
+        } else if (elo >= 1800) {
+            return 'Diamond III'
+        } else if (elo >= 1650) {
+            return 'Diamond II'
+        } else if (elo >= 1500) {
+            return 'Diamond I'
+        } else if (elo >= 1400) {
+            return 'Emerald III'
+        } else if (elo >= 1300) {
+            return 'Emerald II'
+        } else if (elo >= 1200) {
+            return 'Emerald I'
+        } else if (elo >= 1100) {
+            return 'Gold III'
+        } else if (elo >= 1000) {
+            return 'Gold II'
+        } else if (elo >= 900) {
+            return 'Gold I'
+        } else if (elo >= 800) {
+            return 'Iron III'
+        } else if (elo >= 700) {
+            return 'Iron II'
+        } else if (elo >= 600) {
+            return 'Iron I'
+        } else if (elo >= 500) {
+            return 'Coal III'
+        } else if (elo >= 400) {
+            return 'Coal II'
+        } else if (elo >= 0) {
+            return 'Coal I'
+        } else {
+            return 'Unranked'
+        }
+    }
+
+    window.go = async function() {
+        if (lastf != forfeits) {
+            await retreivedata(forfeits)
+        }
+        lastf = forfeits
+
+        let a = document
+            .getElementById("player1inp")
+            .value;
+
+        let b = document
+            .getElementById("player2inp")
+            .value;
+
+
+        let id1 = nameToId.get(
+            a.toLowerCase()
+        );
+
+        let id2 = nameToId.get(
+            b.toLowerCase()
+        );
+
+
+        let output = document.getElementById("result");
+
+
+        if (id1 === undefined || id2 === undefined) {
+            output.textContent = "Player not found";
+            return;
+        }
+
+
+        let result = findPath(id1, id2);
+
+        output.innerHTML = ''
+
+        if (!result) {
+            output.textContent = "No connection found";
+            return;
+        }
+        status.innerText = 'Found successful path'
+
+        for (let i = 0; i < result.nodes.length; i++) {
+            const id = result.nodes[i];
+
+            const box = document.createElement('div')
+            box.className = 'resultbox'
+            box.style.cursor = 'pointer'
+            box.onclick = function() {
+                window.open(
+                    'https://mcsrranked.com/stats/' + players[id].nickname + '/' + result.matches[i]['matchId'],
+                    '_blank'
+                )
+            }
+
+            const name = document.createElement('p')
+            name.textContent = players[id].nickname
+            name.style.margin = 0
+            box.appendChild(name)
+
+            // const matchdata = await getmatchdata(result.matches[i]['matchId'])
+
+            // const season = matchdata['season']
+            // const _players = matchdata['players']
+
+            // let elo = null
+            // let lbpos = null
+
+            // _players.forEach(_player => {
+            //     if (_player.nickname == players[id].nickname) {
+            //         elo = _player['eloRate']
+            //         lbpos = _player['eloRank']
+            //     }
+            // })
+
+            // const rank = elotorank(elo)
+            // will implement later
+
+            output.appendChild(box)
+
+            let match = result.matches[i];
+
+            if (i < result.nodes.length - 1) {
+                const line = document.createElement('div');
+                line.className = 'graphline';
+
+                const text = document.createElement('p')
+
+                if (match['winner'] == id) {
+                    text.textContent = 'beat'
+                    text.style.transform = 'translateX(4px) translateY(-40px)'
+                } else {
+                    text.textContent = 'lost to'
+                    text.style.fontSize = '14.5px'
+                    text.style.transform = 'translateY(-36px)'
+                }
+
+                line.appendChild(text)
+                output.appendChild(line);
+            }
+        }
+        status.textContent = 'click name for match url'
+    }
+    go()
+    </script>
+</html>
