@@ -135,9 +135,9 @@
             <div id="search">
                 <div>
                     <label for="player1inp">Player 1: </label>
-                    <input id='player1inp' type="text" value="fatchudlolcow"/>
+                    <input id='player1inp' type="text" value="toolscreen"/>
                     <label for="player2inp">Player 2: </label>
-                    <input id='player2inp' type="text" value="feinberg"/>
+                    <input id='player2inp' type="text" value="jqhz"/>
                 </div>
                 <div style="padding-bottom: 5px">
                     <span>Include forfeits</span>
@@ -436,13 +436,21 @@
             if (names.length == 1) {
                 name = names.at(-1)
             } else {
-                names.forEach(_name => {
-                    if (_name.toLowerCase() == a.toLowerCase() || _name.toLowerCase() == b.toLowerCase()) {
+                for (const _name of names) {
+                    if (_name.toLowerCase() === a.toLowerCase() || _name.toLowerCase() === b.toLowerCase()) {
                         name = _name
+                        break
+                    } else {
+                        const checkraw = await fetch('https://api.mcsrranked.com/users/' + _name)
+                        const check = await checkraw.json()
+                        if (check['status'] != 'error') {
+                            name = _name
+                            break
+                        }
                     }
-                })
+                }
             }
-
+            console.log(players[id].nicknames)
             try {
                 if ("matchId" in result.matches[i]) {
                     box.onclick = function() {
@@ -453,6 +461,7 @@
                     }
                 }
             } catch(error) {
+                console.log(error + ' <-- this is ok if its "matchid was undefined"')
                 box.onclick = function() {
                     window.open(
                         'https://mcsrranked.com/stats/' + players[id].nicknames.at(-1) + '/' + result.matches[i-1]['matchId'],
