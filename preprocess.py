@@ -2,7 +2,9 @@ import requests
 import json
 import msgpack
 from collections import defaultdict
-
+from requests.exceptions import ChunkedEncodingError
+from urllib3.exceptions import ProtocolError
+import time
 
 urls = ['https://mcsr-downloads.mrderp.dev/download/season_11_20260726_070247.jsonl', 'https://mcsr-downloads.mrderp.dev/download/season_10_20260612_070659.jsonl', 'https://mcsr-downloads.mrderp.dev/download/season_9_20260120_032706.jsonl', 'https://mcsr-downloads.mrderp.dev/download/season_8_20260120_025544.jsonl', 'https://mcsr-downloads.mrderp.dev/download/season_7_20260120_025141.jsonl', 'https://mcsr-downloads.mrderp.dev/download/season_6_20260120_024942.jsonl', 'https://mcsr-downloads.mrderp.dev/download/season_5_20260120_024814.jsonl', 'https://mcsr-downloads.mrderp.dev/download/season_4_20260120_024646.jsonl', 'https://mcsr-downloads.mrderp.dev/download/season_3_20260120_024539.jsonl', 'https://mcsr-downloads.mrderp.dev/download/season_2_20260120_024453.jsonl', 'https://mcsr-downloads.mrderp.dev/download/season_1_20260120_024355.jsonl']
 players = []
@@ -13,14 +15,21 @@ graph = defaultdict(list)
 
 def get_player_id(player):
     uuid = player["uuid"]
+    nickname = player.get("nickname")
 
     if uuid not in uuid_to_id:
         uuid_to_id[uuid] = len(players)
 
         players.append({
             "uuid": uuid,
-            "nickname": player.get("nickname")
+            "nicknames": [nickname] if nickname else []
         })
+
+    else:
+        if nickname:
+            player_data = players[uuid_to_id[uuid]]
+            if nickname not in player_data["nicknames"]:
+                player_data["nicknames"].append(nickname)
 
     return uuid_to_id[uuid]
 
@@ -32,8 +41,8 @@ def process_match(match):
     if len(match.get("players", [])) != 2:
         return
 
-    if match.get('forfeited'):
-        return
+    # if match.get('forfeited'):
+    #     return
 
     players_data = match["players"]
 
@@ -75,26 +84,35 @@ def process_match(match):
 print("Downloading matches...")
 
 for url in urls:
-    with requests.get(url, stream=True) as response:
-        response.raise_for_status()
+    print(f"Downloading {url}")
 
-        count = 0
+    while True:
+        try:
+            with requests.get(url, stream=True, timeout=(30, 300)) as response:
+                response.raise_for_status()
 
-        for line in response.iter_lines():
-            if not line:
-                continue
+                count = 0
 
-            match = json.loads(line)
+                for line in response.iter_lines():
+                    if not line:
+                        continue
 
-            process_match(match)
+                    process_match(json.loads(line))
 
-            count += 1
+                    count += 1
 
-            if count % 100000 == 0:
-                print(
-                    f"Processed {count:,} matches | "
-                    f"Players: {len(players):,}"
-                )
+                    if count % 100000 == 0:
+                        print(f"Processed {count:,} matches | Players: {len(players):,}")
+
+            break
+
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.ChunkedEncodingError,
+                ChunkedEncodingError,
+                ProtocolError) as e:
+            print(f"Download interrupted: {e}")
+            print("Retrying in 5 seconds...")
+            time.sleep(5)
 
 
 print("Saving players...")

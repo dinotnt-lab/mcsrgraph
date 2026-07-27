@@ -161,6 +161,7 @@
         const status = document.getElementById('status');
 
         let nameToId = new Map();
+        let uuidToId = new Map();
 
         window.toggleforfeits = function() {
             const button = document.getElementById('forfeitbutton')
@@ -205,12 +206,18 @@
                 }
                 status.textContent = 'Loading players'
 
+                nameToId.clear();
+                uuidToId.clear();
+
                 players.forEach((player, id) => {
-                    if (player.nickname) {
-                        nameToId.set(
-                            player.nickname.toLowerCase(),
-                            id
-                        );
+                    uuidToId.set(player.uuid, id);
+
+                    if (player.nicknames) {
+                        for (const nickname of player.nicknames) {
+                            if (nickname) {
+                                nameToId.set(nickname.toLowerCase(), id);
+                            }
+                        }
                     }
                 });
                 
@@ -362,13 +369,17 @@
             .value;
 
 
-        let id1 = nameToId.get(
-            a.toLowerCase()
-        );
+        function resolvePlayer(value) {
+            value = value.trim();
 
-        let id2 = nameToId.get(
-            b.toLowerCase()
-        );
+            if (uuidToId.has(value))
+                return uuidToId.get(value);
+
+            return nameToId.get(value.toLowerCase());
+        }
+
+        let id1 = resolvePlayer(a);
+        let id2 = resolvePlayer(b);
 
 
         let output = document.getElementById("result");
@@ -396,17 +407,40 @@
             const box = document.createElement('div')
             box.className = 'resultbox'
             box.style.cursor = 'pointer'
-            box.onclick = function() {
-                window.open(
-                    'https://mcsrranked.com/stats/' + players[id].nickname + '/' + result.matches[i]['matchId'],
-                    '_blank'
-                )
+            const names = players[id].nicknames
+            let name = null
+            if (names.length == 1) {
+                name = names.at(-1)
+            } else {
+                names.forEach(_name => {
+                    if (_name.toLowerCase() == a.toLowerCase() || _name.toLowerCase() == b.toLowerCase()) {
+                        name = _name
+                    }
+                })
             }
 
-            const name = document.createElement('p')
-            name.textContent = players[id].nickname
-            name.style.margin = 0
-            box.appendChild(name)
+            try {
+                if ("matchId" in result.matches[i]) {
+                    box.onclick = function() {
+                        window.open(
+                            'https://mcsrranked.com/stats/' + players[id].nicknames.at(-1) + '/' + result.matches[i]['matchId'],
+                            '_blank'
+                        )
+                    }
+                }
+            } catch(error) {
+                box.onclick = function() {
+                    window.open(
+                        'https://mcsrranked.com/stats/' + players[id].nicknames.at(-1) + '/' + result.matches[i-1]['matchId'],
+                        '_blank'
+                    )
+                } 
+            }
+
+            const namep = document.createElement('p')
+            namep.textContent = name
+            namep.style.margin = 0
+            box.appendChild(namep)
 
             // const matchdata = await getmatchdata(result.matches[i]['matchId'])
 
