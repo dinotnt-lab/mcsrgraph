@@ -175,6 +175,13 @@
         let load = false;
         let loadText = "";
 
+        let isProcessing = false;
+        let lastQuery = {
+            player1: null,
+            player2: null,
+            forfeits: null
+        };
+
         setInterval(() => {
             if (!load) return;
 
@@ -388,6 +395,11 @@
     }
 
     window.go = async function() {
+        document.getElementById('gobutton').disabled = true;
+
+        let output = document.getElementById("result");
+        output.innerHTML = ''
+
         if (lastf != forfeits) {
             await retreivedata(forfeits)
         }
@@ -414,10 +426,6 @@
         let id1 = resolvePlayer(a);
         let id2 = resolvePlayer(b);
 
-
-        let output = document.getElementById("result");
-
-
         if (id1 === undefined || id2 === undefined) {
             output.textContent = "Player not found";
             return;
@@ -425,8 +433,6 @@
 
 
         let result = findPath(id1, id2);
-
-        output.innerHTML = ''
 
         if (!result) {
             output.textContent = "No connection found";
@@ -539,7 +545,8 @@
             }
         }
         status.textContent = 'click name for match url'
-    }
+        document.getElementById('gobutton').disabled = false;
+        }
     go()
     </script>
 </html>
