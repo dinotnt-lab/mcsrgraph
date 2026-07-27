@@ -442,24 +442,37 @@
             box.style.cursor = 'pointer'
             const names = players[id].nicknames
             let name = null
+            console.log(names)
             if (names.length == 1) {
                 name = names.at(-1)
             } else {
+                
                 for (const _name of names) {
+                    console.log(_name.toLowerCase())
+                    console.log(a.toLowerCase())
+                    console.log(b.toLowerCase())
                     if (_name.toLowerCase() === a.toLowerCase() || _name.toLowerCase() === b.toLowerCase()) {
                         name = _name
                         break
-                    } else {
-                        const checkraw = await fetch('https://api.mcsrranked.com/users/' + _name)
-                        const check = await checkraw.json()
-                        if (check['status'] != 'error') {
-                            name = _name
-                            break
+                    } 
+                }
+                if (name == null) {
+                    for (const _name of names) {
+                        try {
+                            const checkraw = await fetch('https://api.mcsrranked.com/users/' + _name)
+                            const check = await checkraw.json()
+                            if (check['status'] != 'error') {
+                                if (check['data']['uuid'] == players[id].uuid) {
+                                    name = _name
+                                    break
+                                }
+                            }
+                        } catch(error) {
+                            console.log(error, ' <-- if 400 or 404 error dont worry')
                         }
                     }
                 }
             }
-            console.log(players[id].nicknames)
             try {
                 if ("matchId" in result.matches[i]) {
                     box.onclick = function() {
