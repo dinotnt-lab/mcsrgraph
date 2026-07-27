@@ -483,7 +483,7 @@
                 if ("matchId" in result.matches[i]) {
                     box.onclick = function() {
                         window.open(
-                            'https://mcsrranked.com/stats/' + players[id].nicknames.at(-1) + '/' + result.matches[i]['matchId'],
+                            'https://mcsrranked.com/stats/' + name + '/' + result.matches[i]['matchId'],
                             '_blank'
                         )
                     }
@@ -492,7 +492,7 @@
                 console.log(error + ' <-- this is ok if its "matchid was undefined"')
                 box.onclick = function() {
                     window.open(
-                        'https://mcsrranked.com/stats/' + players[id].nicknames.at(-1) + '/' + result.matches[i-1]['matchId'],
+                        'https://mcsrranked.com/stats/' + name + '/' + result.matches[i-1]['matchId'],
                         '_blank'
                     )
                 } 
