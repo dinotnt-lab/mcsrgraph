@@ -163,6 +163,23 @@
         let nameToId = new Map();
         let uuidToId = new Map();
 
+        let load = false;
+        let loadText = "";
+
+        setInterval(() => {
+            if (!load) return;
+
+            if (!status.textContent.startsWith(loadText)) {
+                status.textContent = loadText;
+            }
+
+            if (status.textContent.endsWith("...")) {
+                status.textContent = loadText;
+            } else {
+                status.textContent += ".";
+            }
+        }, 300);
+
         window.toggleforfeits = function() {
             const button = document.getElementById('forfeitbutton')
             forfeits = !forfeits
@@ -188,7 +205,9 @@
                     graph = {};
                     let x = 0
                     let y = status.textContent
-
+                    loadText = "Fetching graph file"
+                    status.textContent = loadText
+                    load = true
                     for (const file of files) {
                         const data = await fetch(file).then(r => r.arrayBuffer());
                         const chunk = decode(data);
@@ -199,8 +218,13 @@
                         x += 25
                         status.textContent = y + ' - ' + String(x)
                     }
+                    load = false
                 } else {
+                    loadText = "Fetching graph file"
+                    status.textContent = loadText
+                    load = true
                     buffer = await fetch("graph.msgpack").then(r => r.arrayBuffer());
+                    load = false
                     status.textContent = 'Decoding graph file';
                     graph = decode(buffer);
                 }
