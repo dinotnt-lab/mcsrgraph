@@ -151,7 +151,9 @@
                 <div style="padding-bottom: 5px">
                     <span>Include forfeits</span>
                     <button id="forfeitbutton" class="switch" onclick="toggleforfeits()" aria-pressed="false"></button>
-                </div>
+                    <span>Beat train</span>
+                    <button id="beatbutton" class="switch" onclick="togglebeatTrain()" aria-pressed="false"></button>
+                    </div>
                 <button id='gobutton' onclick="go()">Go</button>
             </div>
 
@@ -168,6 +170,7 @@
         let graph = null
         let lastf = null
         const status = document.getElementById('status');
+        let beatTrain = false;
 
         let nameToId = new Map();
         let uuidToId = new Map();
@@ -201,6 +204,13 @@
             forfeits = !forfeits
             button.classList.toggle('on', forfeits)
             button.setAttribute('aria-pressed', String(forfeits))
+        }
+
+        window.togglebeatTrain = function() {
+            const button = document.getElementById('beatbutton');
+            beatTrain = !beatTrain;
+            button.classList.toggle('on', beatTrain);
+            button.setAttribute('aria-pressed', String(beatTrain));
         }
 
         async function retreivedata(includeForfeits) {
@@ -298,6 +308,9 @@
                     matchId
                 ] = edge;
 
+                if (beatTrain && winner !== current)
+                    continue;
+
                 if (visited.has(neighbour))
                     continue;
 
@@ -319,6 +332,7 @@
                         parentEdge
                     );
                 }
+
                 queue.push(neighbour);
             }
         }
@@ -531,7 +545,7 @@
 
                 const text = document.createElement('p')
 
-                if (match['winner'] == id) {
+                if (beatTrain || match['winner'] == id) {
                     text.textContent = 'beat'
                     text.style.transform = 'translateX(4px) translateY(-40px)'
                 } else {
@@ -544,7 +558,7 @@
                 output.appendChild(line);
             }
         }
-        status.textContent = 'click name for match url'
+        status.textContent = 'click name for match link'
         document.getElementById('gobutton').disabled = false;
         }
     go()
